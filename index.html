@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Monitoring SKSO - Admin & Viewer</title>
+    <link rel="icon" type="image/png" href="clirit.png">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e4663 0%, #0f2f48 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .login-container {
+            max-width: 420px;
+            width: 100%;
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+            animation: fadeIn 0.5s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .login-header { background: #f0a500; padding: 30px; text-align: center; }
+        .login-header .logo { display: flex; justify-content: center; align-items: center; gap: 15px; margin-bottom: 15px; }
+        .login-header .logo img { height: 50px; }
+        .login-header h2 { color: #1e4663; font-size: 1.5rem; margin-bottom: 5px; }
+        .login-header p { color: #2c5a7a; font-size: 0.85rem; }
+        .login-body { padding: 30px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #1e4663; }
+        .form-group input { width: 100%; padding: 12px 15px; border: 2px solid #e0e0e0; border-radius: 12px; font-size: 1rem; }
+        .form-group input:focus { outline: none; border-color: #f0a500; box-shadow: 0 0 0 3px rgba(240,165,0,0.2); }
+        .btn-login { width: 100%; padding: 12px; background: #1e4663; color: white; border: none; border-radius: 12px; font-size: 1rem; font-weight: bold; cursor: pointer; }
+        .btn-login:hover { background: #0f2f48; }
+        .error-message { background: #f8d7da; color: #721c24; padding: 12px; border-radius: 10px; margin-bottom: 20px; font-size: 0.85rem; display: none; }
+        .info-demo { background: #e8f0fe; padding: 12px; border-radius: 10px; margin-top: 20px; font-size: 0.75rem; color: #1e4663; text-align: center; }
+        .main-app { display: none; width: 100%; }
+        .app-container { max-width: 1600px; margin: auto; background: white; padding: 20px; border-radius: 16px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
+        .header { display: flex; align-items: center; justify-content: space-between; gap: 15px; border-bottom: 3px solid #f0a500; padding-bottom: 15px; margin-bottom: 20px; flex-wrap: wrap; }
+        .header-left { display: flex; align-items: center; gap: 15px; }
+        .logo-container { display: flex; align-items: center; gap: 12px; }
+        .logo-pln { height: 60px; width: auto; }
+        .logo-tambahan-wrapper { background: #e0f0ff; padding: 8px 12px; border-radius: 12px; }
+        .logo-tambahan { height: 50px; width: auto; }
+        .title-area { text-align: center; flex: 1; }
+        .title-area h1 { font-size: 1.6rem; color: #0a2b44; margin: 0; }
+        .title-area p { margin: 0; color: #555; font-size: 13px; }
+        .role-badge { background: #f0a500; color: #1e4663; padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; }
+        .digital-clock { background: #1e4663; color: white; padding: 8px 16px; border-radius: 30px; font-family: 'Courier New', monospace; font-size: 1.1rem; font-weight: bold; text-align: center; }
+        .clock-date { font-size: 0.7rem; opacity: 0.8; margin-top: 3px; }
+        .logout-btn { background: #c0392b; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; margin-left: 10px; }
+        .stats { background: #1e4663; color: white; padding: 12px 18px; border-radius: 12px; display: flex; gap: 20px; flex-wrap: wrap; margin: 15px 0; }
+        .stats span { font-size: 0.9rem; font-weight: bold; }
+        .form-tambah { background: #f0f4f8; padding: 15px; border-radius: 12px; margin-bottom: 20px; display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+        .form-tambah input, .form-tambah select { padding: 8px 12px; border-radius: 8px; border: 1px solid #ccc; font-size: 14px; }
+        .form-tambah button { background: #2c7a4d; color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .filter-bar { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 15px; align-items: center; }
+        .filter-bar button { background: #1e4663; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th, td { border: 1px solid #cbd5e1; padding: 8px 5px; text-align: left; vertical-align: top; }
+        th { background: #1e4663; color: white; position: sticky; top: 0; }
+        .status-badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: bold; margin: 2px; }
+        .status-belum { background: #e9ecef; color: #495057; }
+        .status-proses { background: #fff3cd; color: #856404; }
+        .status-terlambat { background: #f8d7da; color: #721c24; }
+        .status-selesai { background: #d4edda; color: #155724; }
+        .progress-bar { background: #e9ecef; border-radius: 10px; height: 4px; width: 50px; overflow: hidden; display: inline-block; }
+        .progress-fill { background: #2c7a4d; height: 100%; }
+        .pagination { display: flex; justify-content: center; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
+        .pagination button { padding: 5px 10px; background: #1e4663; color: white; border: none; border-radius: 6px; cursor: pointer; }
+        .pagination button.active { background: #f0a500; }
+        .detail-row { background: #f8f9fa; display: none; }
+        .detail-row.show { display: table-row; }
+        .detail-cell { padding: 12px !important; background: #f1f3f5; }
+        .hapus-btn, .hapus-pengajuan-btn { background: #c0392b; color: white; border: none; padding: 3px 8px; border-radius: 6px; cursor: pointer; font-size: 10px; margin: 2px; }
+        .pengajuan-item { border: 1px solid #ddd; border-radius: 8px; padding: 8px; margin-bottom: 12px; background: white; }
+        .pengajuan-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 8px; padding-bottom: 5px; border-bottom: 1px solid #eee; }
+        @media (max-width: 800px) {
+            th, td { font-size: 9px; padding: 4px; }
+            .stats span { font-size: 0.7rem; }
+            .logo-pln { height: 40px; }
+            .logo-tambahan { height: 35px; }
+            .title-area h1 { font-size: 1rem; }
+            .digital-clock { font-size: 0.7rem; padding: 4px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Halaman Login -->
+<div id="loginPage" class="login-container">
+    <div class="login-header">
+        <div class="logo">
+            <img src="logo-pln.png" alt="Logo PLN" onerror="this.style.display='none'" style="height:50px;">
+        </div>
+        <h2>Monitoring SKSO</h2>
+        <p>PT PLN (Persero) UIT JBT</p>
+    </div>
+    <div class="login-body">
+        <div id="loginError" class="error-message"></div>
+        <div class="form-group">
+            <label>📧 Email</label>
+            <input type="email" id="loginEmail" placeholder="email@pln.co.id">
+        </div>
+        <div class="form-group">
+            <label>🔒 Password</label>
+            <input type="password" id="loginPassword" placeholder="Password">
+        </div>
+        <button class="btn-login" onclick="doLogin()">🔐 Login</button>
+        <div class="info-demo">
+            💡 <strong>Selamat Datang, silakan masuk sebagai:</strong><br>
+            Admin: <strong>admin@pln.co.id</strong> / <strong>admin123</strong><br>
+            Viewer: <strong>viewer@pln.co.id</strong> / <strong>viewer123</strong>
+        </div>
+    </div>
+</div>
+
+<!-- Aplikasi Utama -->
+<div id="mainApp" class="main-app">
+    <div class="app-container">
+        <div class="header">
+            <div class="header-left">
+                <div class="logo-container">
+                    <img src="logo-pln.png" alt="Logo PLN" class="logo-pln" onerror="this.style.display='none'">
+                    <div class="logo-tambahan-wrapper">
+                        <img src="logo-tambahan.png" alt="Logo Tambahan" class="logo-tambahan" onerror="this.style.display='none'">
+                    </div>
+                </div>
+            </div>
+            <div class="title-area">
+                <h1>MONITORING SURAT SURVEY PASAR</h1>
+                <p>PT PLN (Persero) UIT JBT tahun 2026</p>
+            </div>
+            <div style="text-align:right">
+                <div class="role-badge" id="roleBadge">👁️ VIEWER</div>
+                <div class="digital-clock" style="margin-top:8px;">
+                    <span id="clockTime">--:--:--</span>
+                    <div class="clock-date" id="clockDate">--, -- --- ----</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats" id="statsArea">
+            <span>🏢 Perusahaan: 0</span>
+            <span>📄 Total Pengajuan: 0</span>
+            <span>⏳ Proses: 0</span>
+            <span>⚠️ Terlambat: 0</span>
+            <span>✅ Selesai: 0</span>
+            <span>📊 Kuota: 0/500</span>
+        </div>
+
+        <div id="adminForms">
+            <div class="form-tambah">
+                <input type="text" id="inputNamaPerusahaan" placeholder="Nama Perusahaan *" style="min-width:200px;">
+                <button id="tambahPerusahaanBtn">🏢 Tambah Perusahaan</button>
+            </div>
+            <div class="form-tambah" style="background:#e8f0fe;">
+                <select id="pilihPerusahaan" style="min-width:200px;">
+                    <option value="">-- Pilih Perusahaan --</option>
+                </select>
+                <input type="text" id="inputNomorReg" placeholder="Nomor Registrasi *" style="min-width:160px;">
+                <select id="pilihJenisSurat">
+                    <option value="skso">📄 SKSO</option>
+                    <option value="spso">🔄 SPSO</option>
+                    <option value="skkp">⭐ SKKP</option>
+                    <option value="skpv">🏭 SKPV</option>
+                </select>
+                <input type="date" id="inputTglPengajuan" placeholder="Tgl Pengajuan">
+                <button id="tambahPengajuanBtn">📝 Tambah Pengajuan</button>
+            </div>
+        </div>
+
+        <div class="filter-bar">
+            <input type="text" id="searchInput" placeholder="Cari perusahaan / nomor..." style="flex:2; padding:8px;">
+            <select id="filterStatusDokumen" style="padding:8px;">
+                <option value="all">Semua</option>
+                <option value="ada_proses">Sedang proses</option>
+                <option value="ada_terlambat">⚠️ Terlambat</option>
+                <option value="selesai_all">✅ Selesai semua</option>
+            </select>
+            <button id="exportBtn">📎 Export CSV</button>
+            <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+        </div>
+
+        <div style="overflow-x: auto;">
+            <table id="mainTable">
+                <thead><tr><th>No</th><th>Perusahaan</th><th>Pengajuan</th><th>Status</th><th>Aksi</th></tr></thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+        <div class="pagination" id="pagination"></div>
+    </div>
+</div>
+
+<script>
+    // ==================== SUPABASE CONFIG ====================
+    const SUPABASE_URL = "https://xhnlpugetbhawjzgduhc.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_NCCMY_0OZjHWv8kjd0gZDA_MeBu374z";
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // ==================== DURASI PER AKTIVITAS (JAM) ====================
+    const DURASI_JAM = [72, 72, 168, 72, 48, 24];
+    
+    const aktivitasList = [
+        "Receive Request",
+        "Make a Nodin to Another Sub Bid",
+        "Receive a Nodin from Another Sub Bid",
+        "Verification and Validation a Nodin",
+        "Sent a letter to Vendor",
+        "Finish"
+    ];
+
+    // Global variables
+    let userRole = "viewer";
+    let userId = null;
+    let userEmail = "";
+    let perusahaanList = [];
+    let semuaPengajuan = [];
+    let currentPage = 1;
+    const ITEMS_PER_PAGE = 15;
+    const JENIS_MAP = { skso: "SKSO", spso: "SPSO", skkp: "SKKP", skpv: "SKPV" };
+
+    // ==================== FORMAT SISA WAKTU ====================
+    function formatSisaWaktu(sisaJam, batasJam) {
+        if (sisaJam <= 0) {
+            const terlambatJam = Math.abs(sisaJam);
+            const hari = Math.floor(terlambatJam / 24);
+            const jam = Math.floor(terlambatJam % 24);
+            const menit = Math.floor((terlambatJam % 1) * 60);
+            let teks = "🚨 TERLAMBAT ";
+            if (hari > 0) teks += `${hari} Hari `;
+            if (jam > 0 || hari === 0) teks += `${jam} Jam `;
+            teks += `${menit} Menit`;
+            teks += ` (dari batas ${Math.floor(batasJam / 24)} Hari)`;
+            return teks;
+        } else {
+            const hari = Math.floor(sisaJam / 24);
+            const jam = Math.floor(sisaJam % 24);
+            const menit = Math.floor((sisaJam % 1) * 60);
+            let teks = "⏳ ";
+            if (hari > 0) teks += `${hari} Hari `;
+            if (jam > 0 || hari === 0) teks += `${jam} Jam `;
+            teks += `${menit} Menit`;
+            const batasHari = Math.floor(batasJam / 24);
+            teks += ` (sisa dari ${batasHari} Hari)`;
+            return teks;
+        }
+    }
+
+    // ==================== LOGIN FUNCTION ====================
+    async function doLogin() {
+        const email = document.getElementById("loginEmail").value.trim();
+        const password = document.getElementById("loginPassword").value;
+        const errorDiv = document.getElementById("loginError");
+        
+        if (!email || !password) {
+            errorDiv.textContent = "Email dan password harus diisi!";
+            errorDiv.style.display = "block";
+            return;
+        }
+        errorDiv.style.display = "none";
+        
+        try {
+            const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+            if (error) {
+                errorDiv.textContent = "Login gagal: " + error.message;
+                errorDiv.style.display = "block";
+                return;
+            }
+            if (data.user) {
+                userId = data.user.id;
+                userEmail = data.user.email;
+                const { data: roleData } = await supabaseClient.from('user_roles').select('role').eq('user_id', userId).maybeSingle();
+                userRole = roleData?.role || "viewer";
+                sessionStorage.setItem("sb_user_id", userId);
+                sessionStorage.setItem("sb_user_role", userRole);
+                sessionStorage.setItem("sb_user_email", userEmail);
+                document.getElementById("loginPage").style.display = "none";
+                document.getElementById("mainApp").style.display = "block";
+                updateUIByRole();
+                loadData();
+            }
+        } catch (err) {
+            errorDiv.textContent = "Terjadi kesalahan: " + err.message;
+            errorDiv.style.display = "block";
+        }
+    }
+    
+    async function logout() {
+        await supabaseClient.auth.signOut();
+        sessionStorage.clear();
+        window.location.reload();
+    }
+    
+    function updateUIByRole() {
+        const roleBadge = document.getElementById("roleBadge");
+        const adminForms = document.getElementById("adminForms");
+        if (userRole === "admin") {
+            roleBadge.innerHTML = "👑 ADMIN (Full Access)";
+            roleBadge.style.background = "#2c7a4d";
+            roleBadge.style.color = "white";
+            if (adminForms) adminForms.style.display = "block";
+        } else {
+            roleBadge.innerHTML = `👁️ VIEWER (Read Only) - ${userEmail}`;
+            roleBadge.style.background = "#f0a500";
+            roleBadge.style.color = "#1e4663";
+            if (adminForms) adminForms.style.display = "none";
+        }
+    }
+    
+    function checkAdmin() {
+        if (userRole !== "admin") {
+            alert("⚠️ Anda tidak memiliki izin! (Hanya Admin)");
+            return false;
+        }
+        return true;
+    }
+
+    // ==================== JAM DIGITAL ====================
+    function updateClock() {
+        const now = new Date();
+        document.getElementById('clockTime').textContent = now.toLocaleTimeString('id-ID');
+        document.getElementById('clockDate').textContent = now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    // ==================== VALIDASI URUTAN ====================
+    function isPreviousStepCompleted(statuses, currentIdx) {
+        if (currentIdx === 0) return true;
+        for (let i = 0; i < currentIdx; i++) {
+            if (statuses[i] !== "selesai") return false;
+        }
+        return true;
+    }
+    
+    function canUpdateStatus(aktivitasNama, statuses, currentIdx, newStatus) {
+        if (!isPreviousStepCompleted(statuses, currentIdx)) {
+            alert(`❌ Tidak bisa ${newStatus === "selesai" ? "menyelesaikan" : "memproses"} "${aktivitasNama}"!\n\nSelesaikan aktivitas sebelumnya terlebih dahulu.`);
+            return false;
+        }
+        if (newStatus === "proses" && statuses[currentIdx] !== "belum") {
+            alert(`❌ Aktivitas "${aktivitasNama}" sudah pernah diproses!`);
+            return false;
+        }
+        if (newStatus === "selesai" && statuses[currentIdx] !== "proses") {
+            alert(`❌ Tidak bisa menyelesaikan "${aktivitasNama}" karena belum dalam status "proses"!`);
+            return false;
+        }
+        return true;
+    }
+
+    // ==================== FUNGSI SUPABASE ====================
+    async function loadData() {
+        const [perusahaanRes, pengajuanRes] = await Promise.all([
+            supabaseClient.from('perusahaan').select('*').order('nama'),
+            supabaseClient.from('pengajuan').select('*')
+        ]);
+        if (perusahaanRes.error) { alert("Gagal ambil data perusahaan!"); return; }
+        if (pengajuanRes.error) { alert("Gagal ambil data pengajuan!"); return; }
+        perusahaanList = perusahaanRes.data || [];
+        semuaPengajuan = pengajuanRes.data || [];
+        updateDropdown();
+        renderTable();
+    }
+
+    async function tambahPerusahaan() {
+        if (!checkAdmin()) return;
+        const nama = document.getElementById("inputNamaPerusahaan").value.trim();
+        if (!nama) { alert("Isi nama perusahaan!"); return; }
+        const { error } = await supabaseClient.from('perusahaan').insert([{ nama }]);
+        if (error) { alert("Error: " + error.message); return; }
+        document.getElementById("inputNamaPerusahaan").value = "";
+        await loadData();
+    }
+
+    async function tambahPengajuan() {
+        if (!checkAdmin()) return;
+        const perusahaanId = document.getElementById("pilihPerusahaan").value;
+        const nomorReg = document.getElementById("inputNomorReg").value.trim();
+        const jenisId = document.getElementById("pilihJenisSurat").value;
+        const tglPengajuan = document.getElementById("inputTglPengajuan").value;
+        if (!perusahaanId || !nomorReg) { alert("Pilih perusahaan dan isi nomor registrasi!"); return; }
+        
+        const { error } = await supabaseClient.from('pengajuan').insert([{
+            perusahaan_id: parseInt(perusahaanId),
+            nomor_registrasi: nomorReg,
+            jenis_surat: JENIS_MAP[jenisId],
+            tgl_pengajuan: tglPengajuan || new Date().toISOString().split('T')[0],
+            statuses: ["belum","belum","belum","belum","belum","belum"],
+            start_times: [null,null,null,null,null,null],
+            nomor_surat_balasan: null
+        }]);
+        if (error) { alert("Error: " + error.message); return; }
+        document.getElementById("inputNomorReg").value = "";
+        document.getElementById("inputTglPengajuan").value = "";
+        await loadData();
+    }
+
+    async function updateStatus(pengajuanId, idx, newStatus) {
+        if (!checkAdmin()) return;
+        const p = semuaPengajuan.find(p => p.id === pengajuanId);
+        if (!p) return;
+        
+        let statuses = [...p.statuses];
+        let startTimes = [...p.start_times];
+        
+        if (!canUpdateStatus(aktivitasList[idx], statuses, idx, newStatus)) return;
+        
+        if (newStatus === "belum") startTimes[idx] = null;
+        if (newStatus === "proses") startTimes[idx] = new Date().toISOString();
+        statuses[idx] = newStatus;
+        
+        // CEK: Jika aktivitas 5 (Sent a letter) baru saja selesai
+        if (idx === 4 && newStatus === "selesai") {
+            const nomorSurat = prompt("✉️ Aktivitas 'Sent a letter to Vendor' telah selesai.\n\nMasukkan Nomor Surat Balasan (surat yang dikeluarkan PLN):", p.nomor_surat_balasan || "");
+            if (nomorSurat !== null && nomorSurat !== "") {
+                const { error: updateError } = await supabaseClient
+                    .from('pengajuan')
+                    .update({ nomor_surat_balasan: nomorSurat })
+                    .eq('id', pengajuanId);
+                if (updateError) {
+                    alert("Error update nomor surat: " + updateError.message);
+                } else {
+                    alert(`✅ Nomor surat "${nomorSurat}" telah disimpan.`);
+                }
+            }
+        }
+        
+        if (newStatus === "selesai" && idx === aktivitasList.length - 1) {
+            alert(`🎉 SELAMAT! Proses surat ${p.nomor_registrasi} telah selesai!`);
+        }
+        
+        const { error } = await supabaseClient.from('pengajuan').update({ statuses, start_times: startTimes }).eq('id', pengajuanId);
+        if (error) { alert("Error: " + error.message); return; }
+        await loadData();
+    }
+
+    async function hapusPengajuan(id) {
+        if (!checkAdmin()) return;
+        if (!confirm("Hapus pengajuan ini?")) return;
+        const { error } = await supabaseClient.from('pengajuan').delete().eq('id', id);
+        if (error) { alert("Error: " + error.message); return; }
+        await loadData();
+    }
+
+    async function hapusPerusahaan(id) {
+        if (!checkAdmin()) return;
+        if (!confirm("Hapus perusahaan beserta semua pengajuannya?")) return;
+        const { error } = await supabaseClient.from('perusahaan').delete().eq('id', id);
+        if (error) { alert("Error: " + error.message); return; }
+        await loadData();
+    }
+
+    // ==================== FUNGSI RENDER ====================
+    function getPengajuanByPerusahaan(id) { return semuaPengajuan.filter(p => p.perusahaan_id === id); }
+    
+    function getSummary(p) {
+        let allSelesai = true, adaProses = false, adaTerlambat = false;
+        for (let i = 0; i < aktivitasList.length; i++) {
+            const status = p.statuses[i];
+            if (status !== "selesai") allSelesai = false;
+            if (status === "proses") {
+                adaProses = true;
+                const start = p.start_times[i];
+                if (start && (Date.now() - new Date(start)) / 3600000 > DURASI_JAM[i]) adaTerlambat = true;
+            }
+        }
+        let finalStatus = "selesai";
+        if (!allSelesai) {
+            if (adaTerlambat) finalStatus = "terlambat";
+            else if (adaProses) finalStatus = "proses";
+            else finalStatus = "belum";
+        }
+        return { finalStatus, completed: p.statuses.filter(s => s === "selesai").length };
+    }
+    
+    function getPerusahaanSummary(perusahaan) {
+        const list = getPengajuanByPerusahaan(perusahaan.id);
+        let proses = 0, terlambat = 0, selesai = 0;
+        for (let p of list) {
+            const s = getSummary(p);
+            if (s.finalStatus === "proses") proses++;
+            else if (s.finalStatus === "terlambat") terlambat++;
+            else if (s.finalStatus === "selesai") selesai++;
+        }
+        let global = "belum";
+        if (terlambat > 0) global = "ada_terlambat";
+        else if (proses > 0) global = "ada_proses";
+        else if (selesai === list.length && list.length > 0) global = "selesai_all";
+        return { global, proses, terlambat, selesai, total: list.length };
+    }
+    
+    function updateDropdown() {
+        const select = document.getElementById("pilihPerusahaan");
+        select.innerHTML = '<option value="">-- Pilih Perusahaan --</option>';
+        perusahaanList.forEach(p => {
+            const opt = document.createElement("option");
+            opt.value = p.id;
+            opt.textContent = p.nama;
+            select.appendChild(opt);
+        });
+    }
+    
+    function renderTable() {
+        const search = document.getElementById("searchInput").value.toLowerCase();
+        const filter = document.getElementById("filterStatusDokumen").value;
+        
+        let filtered = perusahaanList.filter(p => {
+            const sum = getPerusahaanSummary(p);
+            if (search && !p.nama.toLowerCase().includes(search) && !getPengajuanByPerusahaan(p.id).some(pg => pg.nomor_registrasi.toLowerCase().includes(search))) return false;
+            if (filter !== "all" && sum.global !== filter) return false;
+            return true;
+        });
+        
+        let totalPengajuan = 0, proses = 0, terlambat = 0, selesai = 0;
+        filtered.forEach(p => { const s = getPerusahaanSummary(p); totalPengajuan += s.total; proses += s.proses; terlambat += s.terlambat; selesai += s.selesai; });
+        document.getElementById("statsArea").innerHTML = `
+            <span>🏢 Perusahaan: ${filtered.length}</span>
+            <span>📄 Total Pengajuan: ${totalPengajuan}</span>
+            <span>⏳ Proses: ${proses}</span>
+            <span>⚠️ Terlambat: ${terlambat}</span>
+            <span>✅ Selesai: ${selesai}</span>
+            <span>📊 Kuota: ${perusahaanList.length}/500</span>
+        `;
+        
+        const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+        const start = (currentPage - 1) * ITEMS_PER_PAGE;
+        const paginated = filtered.slice(start, start + ITEMS_PER_PAGE);
+        const tbody = document.getElementById("tableBody");
+        tbody.innerHTML = "";
+        
+        paginated.forEach((p, idx) => {
+            const row = tbody.insertRow();
+            row.insertCell(0).textContent = start + idx + 1;
+            row.insertCell(1).textContent = p.nama;
+            
+            let html = "";
+            for (let pg of getPengajuanByPerusahaan(p.id)) {
+                const s = getSummary(pg);
+                let cls = "status-belum";
+                if (s.finalStatus === "proses") cls = "status-proses";
+                else if (s.finalStatus === "terlambat") cls = "status-terlambat";
+                else if (s.finalStatus === "selesai") cls = "status-selesai";
+                html += `<div><span class="status-badge ${cls}">${pg.jenis_surat}</span> <strong>${pg.nomor_registrasi}</strong> <small>(${pg.tgl_pengajuan})</small> <div class="progress-bar"><div class="progress-fill" style="width:${(s.completed / 6) * 100}%"></div></div></div>`;
+            }
+            if (getPengajuanByPerusahaan(p.id).length === 0) html = "<span style='color:gray;'>Belum ada pengajuan</span>";
+            row.insertCell(2).innerHTML = html;
+            
+            const sum = getPerusahaanSummary(p);
+            let st = "", sc = "";
+            if (sum.global === "selesai_all") { st = "✅ Semua selesai"; sc = "status-selesai"; }
+            else if (sum.global === "ada_terlambat") { st = "⚠️ Ada terlambat"; sc = "status-terlambat"; }
+            else if (sum.global === "ada_proses") { st = "🔄 Sedang proses"; sc = "status-proses"; }
+            else { st = "⏳ Belum ada proses"; sc = "status-belum"; }
+            row.insertCell(3).innerHTML = `<span class="status-badge ${sc}">${st}</span>`;
+            
+            const act = row.insertCell(4);
+            const detailBtn = document.createElement("button");
+            detailBtn.textContent = "📋 Detail";
+            detailBtn.onclick = () => toggleDetail(p.id);
+            act.appendChild(detailBtn);
+            if (userRole === "admin") {
+                const hapusBtn = document.createElement("button");
+                hapusBtn.textContent = "🗑 Hapus";
+                hapusBtn.className = "hapus-btn";
+                hapusBtn.onclick = () => hapusPerusahaan(p.id);
+                act.appendChild(hapusBtn);
+            }
+            
+            const detailRow = tbody.insertRow();
+            detailRow.className = "detail-row";
+            detailRow.id = `detail-${p.id}`;
+            const detCell = detailRow.insertCell(0);
+            detCell.colSpan = 5;
+            detCell.className = "detail-cell";
+            detCell.innerHTML = generateDetailHTML(p);
+        });
+        
+        const pgDiv = document.getElementById("pagination");
+        pgDiv.innerHTML = "";
+        for (let i = 1; i <= totalPages; i++) {
+            const btn = document.createElement("button");
+            btn.textContent = i;
+            if (i === currentPage) btn.classList.add("active");
+            btn.onclick = () => { currentPage = i; renderTable(); };
+            pgDiv.appendChild(btn);
+        }
+    }
+    
+    function generateDetailHTML(perusahaan) {
+        const list = getPengajuanByPerusahaan(perusahaan.id);
+        if (list.length === 0) return `<div><strong>🏢 ${perusahaan.nama}</strong><br>Belum ada pengajuan</div>`;
+        let html = `<div><strong>🏢 ${perusahaan.nama}</strong><hr>`;
+        for (let pg of list) {
+            const summary = getSummary(pg);
+            const nomorBalasan = pg.nomor_surat_balasan || "-";
+            
+            html += `<div class="pengajuan-item">
+                <div class="pengajuan-header">
+                    <span>
+                        <strong>${pg.jenis_surat}</strong> (${pg.nomor_registrasi}) - ${pg.tgl_pengajuan}
+                        <br><small style="color:blue;">📬 Nomor Surat Balasan (PLN): <strong>${nomorBalasan}</strong></small>
+                    </span>
+                    <span>
+                        <span class="status-badge ${summary.finalStatus === 'selesai' ? 'status-selesai' : (summary.finalStatus === 'terlambat' ? 'status-terlambat' : (summary.finalStatus === 'proses' ? 'status-proses' : 'status-belum'))}">
+                            ${summary.finalStatus === 'selesai' ? '✅ Selesai' : (summary.finalStatus === 'terlambat' ? '⚠️ Terlambat' : (summary.finalStatus === 'proses' ? '🔄 Proses' : '⏳ Belum'))}
+                        </span>
+                        ${userRole === "admin" ? `<button class="hapus-pengajuan-btn" onclick="hapusPengajuan(${pg.id})">🗑 Hapus</button>` : ''}
+                    </span>
+                </div>
+                <table style="width:100%"><tr><th>Aktivitas</th><th>Status</th><th>Sisa Waktu</th>${userRole === "admin" ? '<th>Update</th>' : ''}</tr>`;
+            
+            for (let a = 0; a < 6; a++) {
+                const status = pg.statuses[a];
+                let timerHtml = "-";
+                let isTerlambat = false;
+                if (status === "proses" && pg.start_times[a]) {
+                    const elapsed = (Date.now() - new Date(pg.start_times[a])) / 3600000;
+                    const sisa = DURASI_JAM[a] - elapsed;
+                    isTerlambat = sisa < 0;
+                    timerHtml = formatSisaWaktu(sisa, DURASI_JAM[a]);
+                } else if (status === "selesai") {
+                    timerHtml = "✅ Selesai";
+                }
+                const statusText = status === "belum" ? "Belum" : (status === "proses" ? "Proses" : "Selesai");
+                let cls = status === "belum" ? "status-belum" : (status === "proses" ? "status-proses" : "status-selesai");
+                if (status === "proses" && isTerlambat) cls = "status-terlambat";
+                
+                html += `<tr>
+                    <td style="padding:5px;">${a+1}. ${aktivitasList[a]}</td>
+                    <td style="padding:5px;"><span class="status-badge ${cls}">${statusText}</span></td>
+                    <td style="padding:5px;">${timerHtml}</td>`;
+                
+                if (userRole === "admin") {
+                    html += `<td style="padding:5px;">
+                        <select id="select-${pg.id}-${a}">
+                            <option ${status === "belum" ? "selected" : ""} value="belum">Belum</option>
+                            <option ${status === "proses" ? "selected" : ""} value="proses">Mulai proses</option>
+                            <option ${status === "selesai" ? "selected" : ""} value="selesai">Selesai</option>
+                        </select>
+                        <button onclick="updateStatus(${pg.id}, ${a}, document.getElementById('select-${pg.id}-${a}').value)">Update</button>
+                     </td>`;
+                }
+                html += `</tr>`;
+            }
+            html += `</table></div>`;
+        }
+        return html + `</div>`;
+    }
+    
+    function toggleDetail(id) {
+        const el = document.getElementById(`detail-${id}`);
+        if (el) el.classList.toggle("show");
+    }
+    
+    function exportToCSV() {
+        let rows = [["Perusahaan","Nomor Registrasi","Jenis Surat","Tgl Pengajuan","Nomor Surat Balasan","Status","Progres"]];
+        for (let p of perusahaanList) {
+            for (let pg of getPengajuanByPerusahaan(p.id)) {
+                const s = getSummary(pg);
+                rows.push([p.nama, pg.nomor_registrasi, pg.jenis_surat, pg.tgl_pengajuan, pg.nomor_surat_balasan || "-", s.finalStatus, `${s.completed}/6`]);
+            }
+        }
+        const csv = rows.map(r => r.map(c => `"${c}"`).join(",")).join("\n");
+        const blob = new Blob([csv], { type: "text/csv" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `monitoring_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`;
+        a.click();
+    }
+    
+    // Expose functions to global
+    window.doLogin = doLogin;
+    window.logout = logout;
+    window.updateStatus = updateStatus;
+    window.hapusPengajuan = hapusPengajuan;
+    
+    // Event listeners
+    document.getElementById("searchInput")?.addEventListener("input", () => { currentPage = 1; renderTable(); });
+    document.getElementById("filterStatusDokumen")?.addEventListener("change", () => { currentPage = 1; renderTable(); });
+    document.getElementById("exportBtn")?.addEventListener("click", exportToCSV);
+    document.getElementById("tambahPerusahaanBtn")?.addEventListener("click", tambahPerusahaan);
+    document.getElementById("tambahPengajuanBtn")?.addEventListener("click", tambahPengajuan);
+    
+    // Check existing session
+    const savedRole = sessionStorage.getItem("sb_user_role");
+    if (savedRole) {
+        userRole = savedRole;
+        userEmail = sessionStorage.getItem("sb_user_email") || "";
+        document.getElementById("loginPage").style.display = "none";
+        document.getElementById("mainApp").style.display = "block";
+        updateUIByRole();
+        loadData();
+    }
+</script>
+</body>
+</html>
