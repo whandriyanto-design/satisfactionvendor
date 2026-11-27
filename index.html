@@ -7,91 +7,173 @@
     <link rel="icon" type="image/png" href="clirit.png">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
+        :root {
+            --navy: #1e4663; --navy-dark: #0f2f48; --gold: #f0a500;
+            --green: #2c7a4d; --red: #c0392b; --line: #dbe3ec; --muted: #64748b; --bg-soft: #f4f7fa;
+        }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1e4663 0%, #0f2f48 100%);
+            background: linear-gradient(135deg, var(--navy) 0%, var(--navy-dark) 100%);
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
             padding: 20px;
+            color: #1f2937;
         }
+        body.app-mode { display: block; }
+        button { font-family: inherit; }
+
+        /* ---------- Login ---------- */
         .login-container {
-            max-width: 420px;
-            width: 100%;
-            background: white;
-            border-radius: 24px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-            overflow: hidden;
-            animation: fadeIn 0.5s ease;
+            max-width: 420px; width: 100%; background: white; border-radius: 24px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.25); overflow: hidden; animation: fadeIn 0.5s ease;
         }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .login-header { background: #f0a500; padding: 30px; text-align: center; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        .login-header { background: var(--gold); padding: 30px; text-align: center; }
         .login-header .logo { display: flex; justify-content: center; align-items: center; gap: 15px; margin-bottom: 15px; }
         .login-header .logo img { height: 50px; }
-        .login-header h2 { color: #1e4663; font-size: 1.5rem; margin-bottom: 5px; }
+        .login-header h2 { color: var(--navy); font-size: 1.35rem; margin-bottom: 5px; line-height: 1.3; }
         .login-header p { color: #2c5a7a; font-size: 0.85rem; }
         .login-body { padding: 30px; }
         .form-group { margin-bottom: 20px; }
-        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #1e4663; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: var(--navy); }
         .form-group input { width: 100%; padding: 12px 15px; border: 2px solid #e0e0e0; border-radius: 12px; font-size: 1rem; }
-        .form-group input:focus { outline: none; border-color: #f0a500; box-shadow: 0 0 0 3px rgba(240,165,0,0.2); }
-        .btn-login { width: 100%; padding: 12px; background: #1e4663; color: white; border: none; border-radius: 12px; font-size: 1rem; font-weight: bold; cursor: pointer; }
-        .btn-login:hover { background: #0f2f48; }
+        .form-group input:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(240,165,0,0.2); }
+        .btn-login { width: 100%; padding: 12px; background: var(--navy); color: white; border: none; border-radius: 12px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: background .2s; }
+        .btn-login:hover { background: var(--navy-dark); }
+        .btn-login:disabled { opacity: .7; cursor: wait; }
         .error-message { background: #f8d7da; color: #721c24; padding: 12px; border-radius: 10px; margin-bottom: 20px; font-size: 0.85rem; display: none; }
-        .info-demo { background: #e8f0fe; padding: 12px; border-radius: 10px; margin-top: 20px; font-size: 0.75rem; color: #1e4663; text-align: center; }
+        .info-demo { background: #e8f0fe; padding: 12px; border-radius: 10px; margin-top: 20px; font-size: 0.8rem; color: var(--navy); text-align: center; line-height: 1.5; }
+
+        /* ---------- Layout utama ---------- */
         .main-app { display: none; width: 100%; }
-        .app-container { max-width: 1600px; margin: auto; background: white; padding: 20px; border-radius: 16px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
-        .header { display: flex; align-items: center; justify-content: space-between; gap: 15px; border-bottom: 3px solid #f0a500; padding-bottom: 15px; margin-bottom: 20px; flex-wrap: wrap; }
+        .app-container { max-width: 1600px; margin: auto; background: white; padding: 24px; border-radius: 16px; box-shadow: 0 5px 20px rgba(0,0,0,0.15); }
+        .header { display: flex; align-items: center; justify-content: space-between; gap: 15px; border-bottom: 3px solid var(--gold); padding-bottom: 15px; margin-bottom: 20px; flex-wrap: wrap; }
         .header-left { display: flex; align-items: center; gap: 15px; }
         .logo-container { display: flex; align-items: center; gap: 12px; }
         .logo-pln { height: 60px; width: auto; }
         .logo-tambahan-wrapper { background: #e0f0ff; padding: 8px 12px; border-radius: 12px; }
         .logo-tambahan { height: 50px; width: auto; }
-        .title-area { text-align: center; flex: 1; }
-        .title-area h1 { font-size: 1.6rem; color: #0a2b44; margin: 0; }
-        .title-area p { margin: 0; color: #555; font-size: 13px; }
-        .role-badge { background: #f0a500; color: #1e4663; padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; }
-        .digital-clock { background: #1e4663; color: white; padding: 8px 16px; border-radius: 30px; font-family: 'Courier New', monospace; font-size: 1.1rem; font-weight: bold; text-align: center; }
+        .title-area { text-align: center; flex: 1; min-width: 220px; }
+        .title-area h1 { font-size: 1.6rem; color: #0a2b44; margin: 0; letter-spacing: .3px; }
+        .title-area p { margin: 2px 0 0; color: #555; font-size: 13px; }
+        .header-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+        .header-right-row { display: flex; align-items: center; gap: 8px; }
+        .role-badge { background: var(--gold); color: var(--navy); padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; }
+        .digital-clock { background: var(--navy); color: white; padding: 8px 16px; border-radius: 30px; font-family: 'Courier New', monospace; font-size: 1.1rem; font-weight: bold; text-align: center; }
         .clock-date { font-size: 0.7rem; opacity: 0.8; margin-top: 3px; }
-        .logout-btn { background: #c0392b; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; margin-left: 10px; }
-        .stats { background: #1e4663; color: white; padding: 12px 18px; border-radius: 12px; display: flex; gap: 20px; flex-wrap: wrap; margin: 15px 0; }
-        .stats span { font-size: 0.9rem; font-weight: bold; }
-        .form-tambah { background: #f0f4f8; padding: 15px; border-radius: 12px; margin-bottom: 20px; display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
-        .form-tambah input, .form-tambah select { padding: 8px 12px; border-radius: 8px; border: 1px solid #ccc; font-size: 14px; }
-        .form-tambah button { background: #2c7a4d; color: white; border: none; padding: 8px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; }
-        .filter-bar { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 15px; align-items: center; }
-        .filter-bar button { background: #1e4663; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; }
-        table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        th, td { border: 1px solid #cbd5e1; padding: 8px 5px; text-align: left; vertical-align: top; }
-        th { background: #1e4663; color: white; position: sticky; top: 0; }
-        .status-badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: bold; margin: 2px; }
+        .logout-btn { background: var(--red); color: white; border: none; padding: 7px 14px; border-radius: 20px; cursor: pointer; font-size: 0.8rem; font-weight: 600; }
+        .logout-btn:hover { background: #a93226; }
+
+        /* ---------- Kartu statistik ---------- */
+        .stats { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin: 15px 0 20px; }
+        .stat-card { background: var(--bg-soft); border: 1px solid var(--line); border-left: 5px solid var(--navy); border-radius: 12px; padding: 12px 14px; }
+        .stat-label { font-size: 0.78rem; color: var(--muted); font-weight: 600; }
+        .stat-value { font-size: 1.6rem; font-weight: 800; color: var(--navy); line-height: 1.2; margin-top: 4px; }
+        .stat-card.proses { border-left-color: #e0a800; }
+        .stat-card.terlambat { border-left-color: var(--red); }
+        .stat-card.terlambat .stat-value { color: var(--red); }
+        .stat-card.selesai { border-left-color: var(--green); }
+        .stat-card.selesai .stat-value { color: var(--green); }
+        .stat-card.kuota { border-left-color: var(--gold); }
+
+        /* ---------- Form admin ---------- */
+        .admin-forms { display: grid; grid-template-columns: 1fr 2fr; gap: 16px; margin-bottom: 20px; }
+        .form-tambah { background: var(--bg-soft); border: 1px solid var(--line); padding: 14px 16px; border-radius: 12px; }
+        .form-tambah h3 { font-size: 0.95rem; color: var(--navy); margin-bottom: 10px; }
+        .form-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+        .field { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 140px; }
+        .field label { font-size: 0.75rem; font-weight: 600; color: var(--muted); }
+        .form-tambah input, .form-tambah select, .filter-bar input, .filter-bar select {
+            padding: 9px 12px; border-radius: 8px; border: 1px solid #c5d0dc; font-size: 14px; background: white; width: 100%;
+        }
+        .form-tambah input:focus, .form-tambah select:focus, .filter-bar input:focus, .filter-bar select:focus {
+            outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(240,165,0,0.2);
+        }
+        .btn { border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; padding: 9px 18px; color: white; white-space: nowrap; transition: filter .15s; }
+        .btn:hover { filter: brightness(1.12); }
+        .btn-green { background: var(--green); }
+        .btn-navy { background: var(--navy); }
+
+        /* ---------- Filter ---------- */
+        .filter-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; align-items: center; }
+        .filter-bar .search { flex: 3; min-width: 200px; }
+        .filter-bar .filter-select { flex: 1; min-width: 160px; }
+
+        /* ---------- Tabel ---------- */
+        .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th, td { border-bottom: 1px solid var(--line); padding: 10px 8px; text-align: left; vertical-align: top; }
+        th { background: var(--navy); color: white; position: sticky; top: 0; font-weight: 600; }
+        #mainTable > tbody > tr:not(.detail-row):hover { background: #f8fafc; }
+        .col-no { width: 48px; text-align: center; }
+        .col-aksi { width: 170px; white-space: nowrap; }
+        .pengajuan-line { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 2px 0; }
+        .status-badge { display: inline-block; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: bold; margin: 2px; white-space: nowrap; }
         .status-belum { background: #e9ecef; color: #495057; }
         .status-proses { background: #fff3cd; color: #856404; }
         .status-terlambat { background: #f8d7da; color: #721c24; }
         .status-selesai { background: #d4edda; color: #155724; }
-        .progress-bar { background: #e9ecef; border-radius: 10px; height: 4px; width: 50px; overflow: hidden; display: inline-block; }
-        .progress-fill { background: #2c7a4d; height: 100%; }
-        .pagination { display: flex; justify-content: center; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
-        .pagination button { padding: 5px 10px; background: #1e4663; color: white; border: none; border-radius: 6px; cursor: pointer; }
-        .pagination button.active { background: #f0a500; }
-        .detail-row { background: #f8f9fa; display: none; }
+        .progress-bar { background: #e9ecef; border-radius: 10px; height: 6px; width: 60px; overflow: hidden; display: inline-block; }
+        .progress-fill { background: var(--green); height: 100%; }
+        .muted { color: var(--muted); font-size: 12px; }
+        .empty-row td { text-align: center; color: var(--muted); padding: 30px; }
+        .detail-btn { background: var(--navy); color: white; border: none; padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; }
+        .detail-btn.open { background: var(--gold); color: var(--navy); }
+        .hapus-btn, .hapus-pengajuan-btn { background: var(--red); color: white; border: none; padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; margin: 2px; }
+        .hapus-btn:hover, .hapus-pengajuan-btn:hover, .detail-btn:hover { filter: brightness(1.12); }
+
+        /* ---------- Detail ---------- */
+        .detail-row { display: none; }
         .detail-row.show { display: table-row; }
-        .detail-cell { padding: 12px !important; background: #f1f3f5; }
-        .hapus-btn, .hapus-pengajuan-btn { background: #c0392b; color: white; border: none; padding: 3px 8px; border-radius: 6px; cursor: pointer; font-size: 10px; margin: 2px; }
-        .pengajuan-item { border: 1px solid #ddd; border-radius: 8px; padding: 8px; margin-bottom: 12px; background: white; }
-        .pengajuan-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 8px; padding-bottom: 5px; border-bottom: 1px solid #eee; }
+        .detail-cell { padding: 14px !important; background: #eef2f6; }
+        .detail-title { font-weight: 700; color: var(--navy); margin-bottom: 10px; }
+        .pengajuan-item { border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-bottom: 12px; background: white; }
+        .pengajuan-item:last-child { margin-bottom: 0; }
+        .pengajuan-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #eee; }
+        .nomor-balasan { color: #1d4ed8; font-size: 12px; }
+        .aktivitas-table { border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; }
+        .aktivitas-table th { background: #2f5d80; position: static; font-size: 12px; }
+        .aktivitas-table td { font-size: 12px; vertical-align: middle; }
+        .aktivitas-table tr:nth-child(even) td { background: #fafbfc; }
+        .update-ctrl { display: flex; gap: 6px; }
+        .update-ctrl select { padding: 4px 6px; border-radius: 6px; border: 1px solid #c5d0dc; font-size: 12px; }
+        .update-ctrl button { background: var(--navy); color: white; border: none; border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer; }
+        .timer-late { color: var(--red); font-weight: 600; }
+
+        /* ---------- Pagination ---------- */
+        .pagination { display: flex; justify-content: center; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
+        .pagination button { min-width: 34px; padding: 6px 10px; background: var(--navy); color: white; border: none; border-radius: 6px; cursor: pointer; }
+        .pagination button.active { background: var(--gold); color: var(--navy); font-weight: bold; }
+
+        @media (max-width: 1100px) {
+            .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+            .admin-forms { grid-template-columns: 1fr; }
+        }
         @media (max-width: 800px) {
-            th, td { font-size: 9px; padding: 4px; }
-            .stats span { font-size: 0.7rem; }
+            body { padding: 10px; }
+            .app-container { padding: 14px; }
+            .header { flex-direction: column; text-align: center; }
+            .header-right { align-items: center; }
+            .title-area h1 { font-size: 1.15rem; }
             .logo-pln { height: 40px; }
             .logo-tambahan { height: 35px; }
-            .title-area h1 { font-size: 1rem; }
-            .digital-clock { font-size: 0.7rem; padding: 4px 10px; }
+            .digital-clock { font-size: 0.85rem; padding: 6px 12px; }
+            .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+            .stat-value { font-size: 1.3rem; }
+            .filter-bar .btn { flex: 1; }
+            table { font-size: 12px; }
+            th, td { padding: 7px 5px; }
+            .col-aksi { width: auto; white-space: normal; }
+            .col-aksi button { display: block; width: 100%; margin: 0 0 4px; }
+            .col-no { width: 28px; }
+            .col-status { display: none; }
+            .detail-cell { padding: 8px !important; }
+            .detail-cell, .detail-cell > div { max-width: calc(100vw - 52px); }
+            .pengajuan-header { flex-direction: column; align-items: flex-start; }
+            .update-ctrl { flex-direction: column; }
         }
     </style>
 </head>
@@ -110,16 +192,16 @@
         <div id="loginError" class="error-message"></div>
         <div class="form-group">
             <label>📧 Email</label>
-            <input type="email" id="loginEmail" placeholder="email@pln.co.id">
+            <input type="email" id="loginEmail" placeholder="email@pln.co.id" autocomplete="username">
         </div>
         <div class="form-group">
             <label>🔒 Password</label>
-            <input type="password" id="loginPassword" placeholder="Password">
+            <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password">
         </div>
-        <button class="btn-login" onclick="doLogin()">🔐 Login</button>
+        <button class="btn-login" id="loginBtn" onclick="doLogin()">🔐 Login</button>
         <div class="info-demo">
-            💡 <strong>Selamat Datang, silakan masuk sebagai:</strong><br>
-            Admin atau Viuwer: <strong>Call full Admin anda </strong><br>
+            💡 <strong>Masuk sebagai Admin atau Viewer.</strong><br>
+            Belum punya akun? Hubungi Admin Anda.
         </div>
     </div>
 </div>
@@ -142,60 +224,76 @@
                 <h1>MONITORING SURAT SURVEY PASAR</h1>
                 <p>PT PLN (Persero) UIT JBT tahun 2026</p>
             </div>
-            <div style="text-align:right">
-                <div class="role-badge" id="roleBadge">👁️ VIEWER</div>
-                <div class="digital-clock" style="margin-top:8px;">
+            <div class="header-right">
+                <div class="header-right-row">
+                    <div class="role-badge" id="roleBadge">👁️ VIEWER</div>
+                    <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+                </div>
+                <div class="digital-clock">
                     <span id="clockTime">--:--:--</span>
                     <div class="clock-date" id="clockDate">--, -- --- ----</div>
                 </div>
             </div>
         </div>
 
-        <div class="stats" id="statsArea">
-            <span>🏢 Perusahaan: 0</span>
-            <span>📄 Total Pengajuan: 0</span>
-            <span>⏳ Proses: 0</span>
-            <span>⚠️ Terlambat: 0</span>
-            <span>✅ Selesai: 0</span>
-            <span>📊 Kuota: 0/500</span>
-        </div>
+        <div class="stats" id="statsArea"></div>
 
-        <div id="adminForms">
+        <div id="adminForms" class="admin-forms">
             <div class="form-tambah">
-                <input type="text" id="inputNamaPerusahaan" placeholder="Nama Perusahaan *" style="min-width:200px;">
-                <button id="tambahPerusahaanBtn">🏢 Tambah Perusahaan</button>
+                <h3>🏢 Tambah Perusahaan</h3>
+                <div class="form-row">
+                    <div class="field">
+                        <label for="inputNamaPerusahaan">Nama Perusahaan *</label>
+                        <input type="text" id="inputNamaPerusahaan" placeholder="Contoh: PT Maju Jaya">
+                    </div>
+                    <button class="btn btn-green" id="tambahPerusahaanBtn">+ Tambah</button>
+                </div>
             </div>
-            <div class="form-tambah" style="background:#e8f0fe;">
-                <select id="pilihPerusahaan" style="min-width:200px;">
-                    <option value="">-- Pilih Perusahaan --</option>
-                </select>
-                <input type="text" id="inputNomorReg" placeholder="Nomor Registrasi *" style="min-width:160px;">
-                <select id="pilihJenisSurat">
-                    <option value="skso">📄 SKSO</option>
-                    <option value="spso">🔄 SPSO</option>
-                    <option value="skkp">⭐ SKKP</option>
-                    <option value="skpv">🏭 SKPV</option>
-                </select>
-                <input type="date" id="inputTglPengajuan" placeholder="Tgl Pengajuan">
-                <button id="tambahPengajuanBtn">📝 Tambah Pengajuan</button>
+            <div class="form-tambah">
+                <h3>📝 Tambah Pengajuan</h3>
+                <div class="form-row">
+                    <div class="field" style="flex:2;">
+                        <label for="pilihPerusahaan">Perusahaan *</label>
+                        <select id="pilihPerusahaan">
+                            <option value="">-- Pilih Perusahaan --</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="inputNomorReg">Nomor Registrasi *</label>
+                        <input type="text" id="inputNomorReg" placeholder="REG-...">
+                    </div>
+                    <div class="field" style="min-width:110px; flex:0.7;">
+                        <label for="pilihJenisSurat">Jenis Surat</label>
+                        <select id="pilihJenisSurat">
+                            <option value="skso">SKSO</option>
+                            <option value="spso">SPSO</option>
+                            <option value="skkp">SKKP</option>
+                            <option value="skpv">SKPV</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="inputTglPengajuan">Tgl Pengajuan (kosong = hari ini)</label>
+                        <input type="date" id="inputTglPengajuan">
+                    </div>
+                    <button class="btn btn-green" id="tambahPengajuanBtn">+ Tambah</button>
+                </div>
             </div>
         </div>
 
         <div class="filter-bar">
-            <input type="text" id="searchInput" placeholder="Cari perusahaan / nomor..." style="flex:2; padding:8px;">
-            <select id="filterStatusDokumen" style="padding:8px;">
-                <option value="all">Semua</option>
-                <option value="ada_proses">Sedang proses</option>
+            <input type="text" id="searchInput" class="search" placeholder="🔍 Cari perusahaan / nomor registrasi...">
+            <select id="filterStatusDokumen" class="filter-select">
+                <option value="all">Semua status</option>
+                <option value="ada_proses">🔄 Sedang proses</option>
                 <option value="ada_terlambat">⚠️ Terlambat</option>
                 <option value="selesai_all">✅ Selesai semua</option>
             </select>
-            <button id="exportBtn">📎 Export CSV</button>
-            <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+            <button class="btn btn-navy" id="exportBtn">📎 Export CSV</button>
         </div>
 
-        <div style="overflow-x: auto;">
+        <div class="table-wrap">
             <table id="mainTable">
-                <thead><tr><th>No</th><th>Perusahaan</th><th>Pengajuan</th><th>Status</th><th>Aksi</th></tr></thead>
+                <thead><tr><th class="col-no">No</th><th>Perusahaan</th><th>Pengajuan</th><th class="col-status">Status</th><th class="col-aksi">Aksi</th></tr></thead>
                 <tbody id="tableBody"></tbody>
             </table>
         </div>
@@ -207,7 +305,10 @@
     // ==================== SUPABASE CONFIG ====================
     const SUPABASE_URL = "https://xhnlpugetbhawjzgduhc.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_NCCMY_0OZjHWv8kjd0gZDA_MeBu374z";
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // Sesi login disimpan di sessionStorage: menutup tab = keluar (aman untuk komputer bersama)
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: { storage: window.sessionStorage, persistSession: true, autoRefreshToken: true }
+    });
 
     // ==================== DURASI PER AKTIVITAS (JAM) ====================
     const DURASI_JAM = [72, 72, 168, 72, 48, 24];
@@ -228,8 +329,24 @@
     let perusahaanList = [];
     let semuaPengajuan = [];
     let currentPage = 1;
+    const openDetails = new Set(); // detail perusahaan yang sedang dibuka, agar tetap terbuka setelah data dimuat ulang
     const ITEMS_PER_PAGE = 15;
     const JENIS_MAP = { skso: "SKSO", spso: "SPSO", skkp: "SKKP", skpv: "SKPV" };
+
+    // ==================== HELPER ====================
+    // Escape teks dari database sebelum dimasukkan ke innerHTML (mencegah XSS)
+    function esc(value) {
+        return String(value ?? "")
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    }
+
+    // Tanggal hari ini (YYYY-MM-DD) menurut zona waktu perangkat, bukan UTC
+    function todayLocal() {
+        const d = new Date();
+        const pad = n => String(n).padStart(2, "0");
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    }
 
     // ==================== FORMAT SISA WAKTU ====================
     function formatSisaWaktu(sisaJam, batasJam) {
@@ -270,6 +387,9 @@
             return;
         }
         errorDiv.style.display = "none";
+        const loginBtn = document.getElementById("loginBtn");
+        loginBtn.disabled = true;
+        loginBtn.textContent = "⏳ Memproses...";
         
         try {
             const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
@@ -278,28 +398,54 @@
                 errorDiv.style.display = "block";
                 return;
             }
-            if (data.user) {
-                userId = data.user.id;
-                userEmail = data.user.email;
-                const { data: roleData } = await supabaseClient.from('user_roles').select('role').eq('user_id', userId).maybeSingle();
-                userRole = roleData?.role || "viewer";
-                sessionStorage.setItem("sb_user_id", userId);
-                sessionStorage.setItem("sb_user_role", userRole);
-                sessionStorage.setItem("sb_user_email", userEmail);
-                document.getElementById("loginPage").style.display = "none";
-                document.getElementById("mainApp").style.display = "block";
-                updateUIByRole();
-                loadData();
-            }
+            if (data.user) await startSession(data.user);
         } catch (err) {
             errorDiv.textContent = "Terjadi kesalahan: " + err.message;
             errorDiv.style.display = "block";
+        } finally {
+            loginBtn.disabled = false;
+            loginBtn.textContent = "🔐 Login";
         }
+    }
+
+    // Peran TIDAK disimpan di browser: selalu diambil dari tabel user_roles untuk user yang sesinya sah.
+    // Catatan: ini hanya mengatur tampilan. Perlindungan data yang sebenarnya ada di RLS Supabase
+    // (lihat supabase/rls_policies.sql).
+    async function startSession(user) {
+        userId = user.id;
+        userEmail = user.email || "";
+        const { data: roleData, error } = await supabaseClient
+            .from('user_roles').select('role').eq('user_id', userId).maybeSingle();
+        if (error) {
+            alert("⚠️ Gagal memeriksa peran akun, Anda masuk sebagai Viewer.\n\n" + error.message);
+        }
+        userRole = roleData?.role === "admin" ? "admin" : "viewer";
+        showMainApp();
+    }
+
+    async function sessionExpired() {
+        alert("⏰ Sesi login Anda telah berakhir. Silakan login kembali.");
+        await supabaseClient.auth.signOut();
+        window.location.reload();
+    }
+
+    // Jika error dari Supabase disebabkan sesi tidak sah lagi, arahkan ke login
+    async function handleAuthError(error) {
+        const { data } = await supabaseClient.auth.getSession();
+        if (!data?.session) { await sessionExpired(); return true; }
+        return false;
+    }
+
+    function showMainApp() {
+        document.getElementById("loginPage").style.display = "none";
+        document.getElementById("mainApp").style.display = "block";
+        document.body.classList.add("app-mode");
+        updateUIByRole();
+        loadData();
     }
     
     async function logout() {
         await supabaseClient.auth.signOut();
-        sessionStorage.clear();
         window.location.reload();
     }
     
@@ -307,18 +453,20 @@
         const roleBadge = document.getElementById("roleBadge");
         const adminForms = document.getElementById("adminForms");
         if (userRole === "admin") {
-            roleBadge.innerHTML = "👑 ADMIN (Full Access)";
+            roleBadge.textContent = "👑 ADMIN (Full Access)";
             roleBadge.style.background = "#2c7a4d";
             roleBadge.style.color = "white";
-            if (adminForms) adminForms.style.display = "block";
+            if (adminForms) adminForms.style.display = "";
         } else {
-            roleBadge.innerHTML = `👁️ VIEWER (Read Only) - ${userEmail}`;
+            roleBadge.textContent = `👁️ VIEWER (Read Only) - ${userEmail}`;
             roleBadge.style.background = "#f0a500";
             roleBadge.style.color = "#1e4663";
             if (adminForms) adminForms.style.display = "none";
         }
     }
     
+    const TIDAK_ADA_IZIN = "⛔ Perubahan ditolak oleh server: akun Anda tidak memiliki izin, atau data sudah tidak ada. Data dimuat ulang.";
+
     function checkAdmin() {
         if (userRole !== "admin") {
             alert("⚠️ Anda tidak memiliki izin! (Hanya Admin)");
@@ -346,6 +494,19 @@
     }
     
     function canUpdateStatus(aktivitasNama, statuses, currentIdx, newStatus) {
+        if (statuses[currentIdx] === newStatus) {
+            alert(`ℹ️ Aktivitas "${aktivitasNama}" sudah berstatus "${newStatus}".`);
+            return false;
+        }
+        if (newStatus === "belum") {
+            // Hanya boleh dikembalikan ke "belum" jika semua aktivitas sesudahnya juga masih "belum"
+            const adaSesudahnya = statuses.slice(currentIdx + 1).some(s => s !== "belum");
+            if (adaSesudahnya) {
+                alert(`❌ Tidak bisa mengembalikan "${aktivitasNama}" ke "Belum"!\n\nAktivitas sesudahnya sudah diproses/selesai. Kembalikan aktivitas yang paling akhir terlebih dahulu.`);
+                return false;
+            }
+            return true;
+        }
         if (!isPreviousStepCompleted(statuses, currentIdx)) {
             alert(`❌ Tidak bisa ${newStatus === "selesai" ? "menyelesaikan" : "memproses"} "${aktivitasNama}"!\n\nSelesaikan aktivitas sebelumnya terlebih dahulu.`);
             return false;
@@ -367,8 +528,12 @@
             supabaseClient.from('perusahaan').select('*').order('nama'),
             supabaseClient.from('pengajuan').select('*')
         ]);
-        if (perusahaanRes.error) { alert("Gagal ambil data perusahaan!"); return; }
-        if (pengajuanRes.error) { alert("Gagal ambil data pengajuan!"); return; }
+        const loadError = perusahaanRes.error || pengajuanRes.error;
+        if (loadError) {
+            if (await handleAuthError(loadError)) return;
+            alert("Gagal ambil data: " + loadError.message);
+            return;
+        }
         perusahaanList = perusahaanRes.data || [];
         semuaPengajuan = pengajuanRes.data || [];
         updateDropdown();
@@ -397,7 +562,7 @@
             perusahaan_id: parseInt(perusahaanId),
             nomor_registrasi: nomorReg,
             jenis_surat: JENIS_MAP[jenisId],
-            tgl_pengajuan: tglPengajuan || new Date().toISOString().split('T')[0],
+            tgl_pengajuan: tglPengajuan || todayLocal(),
             statuses: ["belum","belum","belum","belum","belum","belum"],
             start_times: [null,null,null,null,null,null],
             nomor_surat_balasan: null
@@ -422,44 +587,67 @@
         if (newStatus === "proses") startTimes[idx] = new Date().toISOString();
         statuses[idx] = newStatus;
         
-        // CEK: Jika aktivitas 5 (Sent a letter) baru saja selesai
-        if (idx === 4 && newStatus === "selesai") {
-            const nomorSurat = prompt("✉️ Aktivitas 'Sent a letter to Vendor' telah selesai.\n\nMasukkan Nomor Surat Balasan (surat yang dikeluarkan PLN):", p.nomor_surat_balasan || "");
-            if (nomorSurat !== null && nomorSurat !== "") {
-                const { error: updateError } = await supabaseClient
-                    .from('pengajuan')
-                    .update({ nomor_surat_balasan: nomorSurat })
-                    .eq('id', pengajuanId);
-                if (updateError) {
-                    alert("Error update nomor surat: " + updateError.message);
-                } else {
-                    alert(`✅ Nomor surat "${nomorSurat}" telah disimpan.`);
-                }
-            }
+        // Cek konflik: pastikan data di database masih sama dengan yang sedang dilihat admin ini
+        const { data: terbaru, error: cekError } = await supabaseClient
+            .from('pengajuan').select('statuses, start_times, nomor_surat_balasan').eq('id', pengajuanId).maybeSingle();
+        if (cekError) {
+            if (await handleAuthError(cekError)) return;
+            alert("Error: " + cekError.message); return;
         }
-        
+        if (!terbaru) {
+            alert("⚠️ Pengajuan ini sudah dihapus oleh pengguna lain. Data dimuat ulang.");
+            await loadData(); return;
+        }
+        if (JSON.stringify(terbaru.statuses) !== JSON.stringify(p.statuses) ||
+            JSON.stringify(terbaru.start_times) !== JSON.stringify(p.start_times) ||
+            (terbaru.nomor_surat_balasan ?? null) !== (p.nomor_surat_balasan ?? null)) {
+            alert("⚠️ Pengajuan ini baru saja diubah oleh admin lain.\n\nData dimuat ulang. Periksa statusnya lalu ulangi perubahan Anda bila masih diperlukan.");
+            await loadData(); return;
+        }
+
+        const perubahan = { statuses, start_times: startTimes };
+
+        // Aktivitas 5 (Sent a letter to Vendor) wajib disertai Nomor Surat Balasan.
+        // Nomor surat disimpan bersamaan dengan status dalam satu update.
+        if (idx === 4 && newStatus === "selesai") {
+            const input = prompt("✉️ Aktivitas 'Sent a letter to Vendor' akan diselesaikan.\n\nMasukkan Nomor Surat Balasan (surat yang dikeluarkan PLN):", p.nomor_surat_balasan || "");
+            if (input === null) return; // dibatalkan: status tidak diubah
+            const nomorSurat = input.trim();
+            if (!nomorSurat) {
+                alert("❌ Nomor Surat Balasan wajib diisi untuk menyelesaikan aktivitas ini.");
+                return;
+            }
+            perubahan.nomor_surat_balasan = nomorSurat;
+        }
+
+        const { data: hasil, error } = await supabaseClient.from('pengajuan').update(perubahan).eq('id', pengajuanId).select('id');
+        if (error) {
+            if (await handleAuthError(error)) return;
+            alert("Error: " + error.message); return;
+        }
+        if (!hasil || hasil.length === 0) { alert(TIDAK_ADA_IZIN); await loadData(); return; }
+
         if (newStatus === "selesai" && idx === aktivitasList.length - 1) {
             alert(`🎉 SELAMAT! Proses surat ${p.nomor_registrasi} telah selesai!`);
         }
-        
-        const { error } = await supabaseClient.from('pengajuan').update({ statuses, start_times: startTimes }).eq('id', pengajuanId);
-        if (error) { alert("Error: " + error.message); return; }
         await loadData();
     }
 
     async function hapusPengajuan(id) {
         if (!checkAdmin()) return;
         if (!confirm("Hapus pengajuan ini?")) return;
-        const { error } = await supabaseClient.from('pengajuan').delete().eq('id', id);
-        if (error) { alert("Error: " + error.message); return; }
+        const { data: hasil, error } = await supabaseClient.from('pengajuan').delete().eq('id', id).select('id');
+        if (error) { if (await handleAuthError(error)) return; alert("Error: " + error.message); return; }
+        if (!hasil || hasil.length === 0) alert(TIDAK_ADA_IZIN);
         await loadData();
     }
 
     async function hapusPerusahaan(id) {
         if (!checkAdmin()) return;
         if (!confirm("Hapus perusahaan beserta semua pengajuannya?")) return;
-        const { error } = await supabaseClient.from('perusahaan').delete().eq('id', id);
-        if (error) { alert("Error: " + error.message); return; }
+        const { data: hasil, error } = await supabaseClient.from('perusahaan').delete().eq('id', id).select('id');
+        if (error) { if (await handleAuthError(error)) return; alert("Error: " + error.message); return; }
+        if (!hasil || hasil.length === 0) alert(TIDAK_ADA_IZIN);
         await loadData();
     }
 
@@ -526,25 +714,39 @@
         
         let totalPengajuan = 0, proses = 0, terlambat = 0, selesai = 0;
         filtered.forEach(p => { const s = getPerusahaanSummary(p); totalPengajuan += s.total; proses += s.proses; terlambat += s.terlambat; selesai += s.selesai; });
-        document.getElementById("statsArea").innerHTML = `
-            <span>🏢 Perusahaan: ${filtered.length}</span>
-            <span>📄 Total Pengajuan: ${totalPengajuan}</span>
-            <span>⏳ Proses: ${proses}</span>
-            <span>⚠️ Terlambat: ${terlambat}</span>
-            <span>✅ Selesai: ${selesai}</span>
-            <span>📊 Kuota: ${perusahaanList.length}/500</span>
-        `;
+        const statCard = (label, value, cls = "") =>
+            `<div class="stat-card ${cls}"><div class="stat-label">${label}</div><div class="stat-value">${value}</div></div>`;
+        document.getElementById("statsArea").innerHTML =
+            statCard("🏢 Perusahaan", filtered.length) +
+            statCard("📄 Total Pengajuan", totalPengajuan) +
+            statCard("⏳ Proses", proses, "proses") +
+            statCard("⚠️ Terlambat", terlambat, "terlambat") +
+            statCard("✅ Selesai", selesai, "selesai") +
+            statCard("📊 Kuota", `${perusahaanList.length}<span class="muted">/500</span>`, "kuota");
         
         const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+        // Setelah hapus/filter, pastikan halaman aktif tidak melebihi jumlah halaman
+        currentPage = Math.min(Math.max(currentPage, 1), Math.max(totalPages, 1));
         const start = (currentPage - 1) * ITEMS_PER_PAGE;
         const paginated = filtered.slice(start, start + ITEMS_PER_PAGE);
         const tbody = document.getElementById("tableBody");
         tbody.innerHTML = "";
+        if (paginated.length === 0) {
+            const r = tbody.insertRow();
+            r.className = "empty-row";
+            const c = r.insertCell(0);
+            c.colSpan = 5;
+            c.textContent = perusahaanList.length === 0 ? "Belum ada data perusahaan." : "Tidak ada data yang cocok dengan pencarian / filter.";
+        }
         
         paginated.forEach((p, idx) => {
             const row = tbody.insertRow();
-            row.insertCell(0).textContent = start + idx + 1;
-            row.insertCell(1).textContent = p.nama;
+            const noCell = row.insertCell(0);
+            noCell.textContent = start + idx + 1;
+            noCell.className = "col-no";
+            const namaCell = row.insertCell(1);
+            namaCell.textContent = p.nama;
+            namaCell.style.fontWeight = "600";
             
             let html = "";
             for (let pg of getPengajuanByPerusahaan(p.id)) {
@@ -553,9 +755,9 @@
                 if (s.finalStatus === "proses") cls = "status-proses";
                 else if (s.finalStatus === "terlambat") cls = "status-terlambat";
                 else if (s.finalStatus === "selesai") cls = "status-selesai";
-                html += `<div><span class="status-badge ${cls}">${pg.jenis_surat}</span> <strong>${pg.nomor_registrasi}</strong> <small>(${pg.tgl_pengajuan})</small> <div class="progress-bar"><div class="progress-fill" style="width:${(s.completed / 6) * 100}%"></div></div></div>`;
+                html += `<div class="pengajuan-line"><span class="status-badge ${cls}">${esc(pg.jenis_surat)}</span> <strong>${esc(pg.nomor_registrasi)}</strong> <span class="muted">${esc(pg.tgl_pengajuan)}</span> <span class="progress-bar" title="${s.completed}/6 aktivitas selesai"><span class="progress-fill" style="display:block; width:${(s.completed / 6) * 100}%"></span></span></div>`;
             }
-            if (getPengajuanByPerusahaan(p.id).length === 0) html = "<span style='color:gray;'>Belum ada pengajuan</span>";
+            if (getPengajuanByPerusahaan(p.id).length === 0) html = "<span class='muted'>Belum ada pengajuan</span>";
             row.insertCell(2).innerHTML = html;
             
             const sum = getPerusahaanSummary(p);
@@ -564,11 +766,17 @@
             else if (sum.global === "ada_terlambat") { st = "⚠️ Ada terlambat"; sc = "status-terlambat"; }
             else if (sum.global === "ada_proses") { st = "🔄 Sedang proses"; sc = "status-proses"; }
             else { st = "⏳ Belum ada proses"; sc = "status-belum"; }
-            row.insertCell(3).innerHTML = `<span class="status-badge ${sc}">${st}</span>`;
+            const statusCell = row.insertCell(3);
+            statusCell.className = "col-status";
+            statusCell.innerHTML = `<span class="status-badge ${sc}">${st}</span>`;
             
             const act = row.insertCell(4);
+            act.className = "col-aksi";
+            const isOpen = openDetails.has(p.id);
             const detailBtn = document.createElement("button");
-            detailBtn.textContent = "📋 Detail";
+            detailBtn.className = "detail-btn" + (isOpen ? " open" : "");
+            detailBtn.id = `detail-btn-${p.id}`;
+            detailBtn.textContent = isOpen ? "▲ Tutup" : "📋 Detail";
             detailBtn.onclick = () => toggleDetail(p.id);
             act.appendChild(detailBtn);
             if (userRole === "admin") {
@@ -580,7 +788,7 @@
             }
             
             const detailRow = tbody.insertRow();
-            detailRow.className = "detail-row";
+            detailRow.className = "detail-row" + (isOpen ? " show" : "");
             detailRow.id = `detail-${p.id}`;
             const detCell = detailRow.insertCell(0);
             detCell.colSpan = 5;
@@ -590,7 +798,7 @@
         
         const pgDiv = document.getElementById("pagination");
         pgDiv.innerHTML = "";
-        for (let i = 1; i <= totalPages; i++) {
+        for (let i = 1; i <= totalPages && totalPages > 1; i++) {
             const btn = document.createElement("button");
             btn.textContent = i;
             if (i === currentPage) btn.classList.add("active");
@@ -601,8 +809,8 @@
     
     function generateDetailHTML(perusahaan) {
         const list = getPengajuanByPerusahaan(perusahaan.id);
-        if (list.length === 0) return `<div><strong>🏢 ${perusahaan.nama}</strong><br>Belum ada pengajuan</div>`;
-        let html = `<div><strong>🏢 ${perusahaan.nama}</strong><hr>`;
+        if (list.length === 0) return `<div class="detail-title">🏢 ${esc(perusahaan.nama)}</div><span class="muted">Belum ada pengajuan</span>`;
+        let html = `<div><div class="detail-title">🏢 ${esc(perusahaan.nama)}</div>`;
         for (let pg of list) {
             const summary = getSummary(pg);
             const nomorBalasan = pg.nomor_surat_balasan || "-";
@@ -610,17 +818,17 @@
             html += `<div class="pengajuan-item">
                 <div class="pengajuan-header">
                     <span>
-                        <strong>${pg.jenis_surat}</strong> (${pg.nomor_registrasi}) - ${pg.tgl_pengajuan}
-                        <br><small style="color:blue;">📬 Nomor Surat Balasan (PLN): <strong>${nomorBalasan}</strong></small>
+                        <strong>${esc(pg.jenis_surat)}</strong> (${esc(pg.nomor_registrasi)}) - ${esc(pg.tgl_pengajuan)}
+                        <br><span class="nomor-balasan">📬 Nomor Surat Balasan (PLN): <strong>${esc(nomorBalasan)}</strong></span>
                     </span>
                     <span>
                         <span class="status-badge ${summary.finalStatus === 'selesai' ? 'status-selesai' : (summary.finalStatus === 'terlambat' ? 'status-terlambat' : (summary.finalStatus === 'proses' ? 'status-proses' : 'status-belum'))}">
                             ${summary.finalStatus === 'selesai' ? '✅ Selesai' : (summary.finalStatus === 'terlambat' ? '⚠️ Terlambat' : (summary.finalStatus === 'proses' ? '🔄 Proses' : '⏳ Belum'))}
                         </span>
-                        ${userRole === "admin" ? `<button class="hapus-pengajuan-btn" onclick="hapusPengajuan(${pg.id})">🗑 Hapus</button>` : ''}
+                        ${userRole === "admin" ? `<button class="hapus-pengajuan-btn" onclick="hapusPengajuan(${Number(pg.id)})">🗑 Hapus</button>` : ''}
                     </span>
                 </div>
-                <table style="width:100%"><tr><th>Aktivitas</th><th>Status</th><th>Sisa Waktu</th>${userRole === "admin" ? '<th>Update</th>' : ''}</tr>`;
+                <div class="aktivitas-table"><table><tr><th>Aktivitas</th><th>Status</th><th>Sisa Waktu</th>${userRole === "admin" ? '<th>Update</th>' : ''}</tr>`;
             
             for (let a = 0; a < 6; a++) {
                 const status = pg.statuses[a];
@@ -639,30 +847,37 @@
                 if (status === "proses" && isTerlambat) cls = "status-terlambat";
                 
                 html += `<tr>
-                    <td style="padding:5px;">${a+1}. ${aktivitasList[a]}</td>
-                    <td style="padding:5px;"><span class="status-badge ${cls}">${statusText}</span></td>
-                    <td style="padding:5px;">${timerHtml}</td>`;
+                    <td>${a+1}. ${aktivitasList[a]}</td>
+                    <td><span class="status-badge ${cls}">${statusText}</span></td>
+                    <td${isTerlambat ? ' class="timer-late"' : ''}>${timerHtml}</td>`;
                 
                 if (userRole === "admin") {
-                    html += `<td style="padding:5px;">
-                        <select id="select-${pg.id}-${a}">
+                    html += `<td><div class="update-ctrl">
+                        <select id="select-${Number(pg.id)}-${a}">
                             <option ${status === "belum" ? "selected" : ""} value="belum">Belum</option>
                             <option ${status === "proses" ? "selected" : ""} value="proses">Mulai proses</option>
                             <option ${status === "selesai" ? "selected" : ""} value="selesai">Selesai</option>
                         </select>
-                        <button onclick="updateStatus(${pg.id}, ${a}, document.getElementById('select-${pg.id}-${a}').value)">Update</button>
-                     </td>`;
+                        <button onclick="updateStatus(${Number(pg.id)}, ${a}, document.getElementById('select-${Number(pg.id)}-${a}').value)">Update</button>
+                     </div></td>`;
                 }
                 html += `</tr>`;
             }
-            html += `</table></div>`;
+            html += `</table></div></div>`;
         }
         return html + `</div>`;
     }
     
     function toggleDetail(id) {
         const el = document.getElementById(`detail-${id}`);
-        if (el) el.classList.toggle("show");
+        if (!el) return;
+        const open = el.classList.toggle("show");
+        if (open) openDetails.add(id); else openDetails.delete(id);
+        const btn = document.getElementById(`detail-btn-${id}`);
+        if (btn) {
+            btn.classList.toggle("open", open);
+            btn.textContent = open ? "▲ Tutup" : "📋 Detail";
+        }
     }
     
     function exportToCSV() {
@@ -694,16 +909,19 @@
     document.getElementById("tambahPerusahaanBtn")?.addEventListener("click", tambahPerusahaan);
     document.getElementById("tambahPengajuanBtn")?.addEventListener("click", tambahPengajuan);
     
-    // Check existing session
-    const savedRole = sessionStorage.getItem("sb_user_role");
-    if (savedRole) {
-        userRole = savedRole;
-        userEmail = sessionStorage.getItem("sb_user_email") || "";
-        document.getElementById("loginPage").style.display = "none";
-        document.getElementById("mainApp").style.display = "block";
-        updateUIByRole();
-        loadData();
-    }
+    ["loginEmail", "loginPassword"].forEach(id =>
+        document.getElementById(id).addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); }));
+    document.getElementById("inputNamaPerusahaan").addEventListener("keydown", e => { if (e.key === "Enter") tambahPerusahaan(); });
+
+    // Cek sesi yang masih berlaku (diverifikasi oleh Supabase, bukan dari nilai yang bisa diubah pengguna)
+    ["sb_user_id", "sb_user_role", "sb_user_email"].forEach(k => sessionStorage.removeItem(k)); // sisa versi lama
+    (async () => {
+        const { data } = await supabaseClient.auth.getSession();
+        if (data?.session?.user) await startSession(data.session.user);
+    })();
+    supabaseClient.auth.onAuthStateChange((event, session) => {
+        if (event === "SIGNED_OUT" && userId) window.location.reload();
+    });
 </script>
 </body>
 </html>
