@@ -330,6 +330,21 @@
     const ITEMS_PER_PAGE = 15;
     const JENIS_MAP = { skso: "SKSO", spso: "SPSO", skkp: "SKKP", skpv: "SKPV" };
 
+    // ==================== HELPER ====================
+    // Escape teks dari database sebelum dimasukkan ke innerHTML (mencegah XSS)
+    function esc(value) {
+        return String(value ?? "")
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    }
+
+    // Tanggal hari ini (YYYY-MM-DD) menurut zona waktu perangkat, bukan UTC
+    function todayLocal() {
+        const d = new Date();
+        const pad = n => String(n).padStart(2, "0");
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    }
+
     // ==================== FORMAT SISA WAKTU ====================
     function formatSisaWaktu(sisaJam, batasJam) {
         if (sisaJam <= 0) {
@@ -417,12 +432,12 @@
         const roleBadge = document.getElementById("roleBadge");
         const adminForms = document.getElementById("adminForms");
         if (userRole === "admin") {
-            roleBadge.innerHTML = "👑 ADMIN (Full Access)";
+            roleBadge.textContent = "👑 ADMIN (Full Access)";
             roleBadge.style.background = "#2c7a4d";
             roleBadge.style.color = "white";
             if (adminForms) adminForms.style.display = "";
         } else {
-            roleBadge.innerHTML = `👁️ VIEWER (Read Only) - ${userEmail}`;
+            roleBadge.textContent = `👁️ VIEWER (Read Only) - ${userEmail}`;
             roleBadge.style.background = "#f0a500";
             roleBadge.style.color = "#1e4663";
             if (adminForms) adminForms.style.display = "none";
@@ -456,6 +471,19 @@
     }
     
     function canUpdateStatus(aktivitasNama, statuses, currentIdx, newStatus) {
+        if (statuses[currentIdx] === newStatus) {
+            alert(`ℹ️ Aktivitas "${aktivitasNama}" sudah berstatus "${newStatus}".`);
+            return false;
+        }
+        if (newStatus === "belum") {
+            // Hanya boleh dikembalikan ke "belum" jika semua aktivitas sesudahnya juga masih "belum"
+            const adaSesudahnya = statuses.slice(currentIdx + 1).some(s => s !== "belum");
+            if (adaSesudahnya) {
+                alert(`❌ Tidak bisa mengembalikan "${aktivitasNama}" ke "Belum"!\n\nAktivitas sesudahnya sudah diproses/selesai. Kembalikan aktivitas yang paling akhir terlebih dahulu.`);
+                return false;
+            }
+            return true;
+        }
         if (!isPreviousStepCompleted(statuses, currentIdx)) {
             alert(`❌ Tidak bisa ${newStatus === "selesai" ? "menyelesaikan" : "memproses"} "${aktivitasNama}"!\n\nSelesaikan aktivitas sebelumnya terlebih dahulu.`);
             return false;
@@ -507,7 +535,7 @@
             perusahaan_id: parseInt(perusahaanId),
             nomor_registrasi: nomorReg,
             jenis_surat: JENIS_MAP[jenisId],
-            tgl_pengajuan: tglPengajuan || new Date().toISOString().split('T')[0],
+            tgl_pengajuan: tglPengajuan || todayLocal(),
             statuses: ["belum","belum","belum","belum","belum","belum"],
             start_times: [null,null,null,null,null,null],
             nomor_surat_balasan: null
@@ -532,28 +560,27 @@
         if (newStatus === "proses") startTimes[idx] = new Date().toISOString();
         statuses[idx] = newStatus;
         
-        // CEK: Jika aktivitas 5 (Sent a letter) baru saja selesai
+        const perubahan = { statuses, start_times: startTimes };
+
+        // Aktivitas 5 (Sent a letter to Vendor) wajib disertai Nomor Surat Balasan.
+        // Nomor surat disimpan bersamaan dengan status dalam satu update.
         if (idx === 4 && newStatus === "selesai") {
-            const nomorSurat = prompt("✉️ Aktivitas 'Sent a letter to Vendor' telah selesai.\n\nMasukkan Nomor Surat Balasan (surat yang dikeluarkan PLN):", p.nomor_surat_balasan || "");
-            if (nomorSurat !== null && nomorSurat !== "") {
-                const { error: updateError } = await supabaseClient
-                    .from('pengajuan')
-                    .update({ nomor_surat_balasan: nomorSurat })
-                    .eq('id', pengajuanId);
-                if (updateError) {
-                    alert("Error update nomor surat: " + updateError.message);
-                } else {
-                    alert(`✅ Nomor surat "${nomorSurat}" telah disimpan.`);
-                }
+            const input = prompt("✉️ Aktivitas 'Sent a letter to Vendor' akan diselesaikan.\n\nMasukkan Nomor Surat Balasan (surat yang dikeluarkan PLN):", p.nomor_surat_balasan || "");
+            if (input === null) return; // dibatalkan: status tidak diubah
+            const nomorSurat = input.trim();
+            if (!nomorSurat) {
+                alert("❌ Nomor Surat Balasan wajib diisi untuk menyelesaikan aktivitas ini.");
+                return;
             }
+            perubahan.nomor_surat_balasan = nomorSurat;
         }
-        
+
+        const { error } = await supabaseClient.from('pengajuan').update(perubahan).eq('id', pengajuanId);
+        if (error) { alert("Error: " + error.message); return; }
+
         if (newStatus === "selesai" && idx === aktivitasList.length - 1) {
             alert(`🎉 SELAMAT! Proses surat ${p.nomor_registrasi} telah selesai!`);
         }
-        
-        const { error } = await supabaseClient.from('pengajuan').update({ statuses, start_times: startTimes }).eq('id', pengajuanId);
-        if (error) { alert("Error: " + error.message); return; }
         await loadData();
     }
 
@@ -647,6 +674,8 @@
             statCard("📊 Kuota", `${perusahaanList.length}<span class="muted">/500</span>`, "kuota");
         
         const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+        // Setelah hapus/filter, pastikan halaman aktif tidak melebihi jumlah halaman
+        currentPage = Math.min(Math.max(currentPage, 1), Math.max(totalPages, 1));
         const start = (currentPage - 1) * ITEMS_PER_PAGE;
         const paginated = filtered.slice(start, start + ITEMS_PER_PAGE);
         const tbody = document.getElementById("tableBody");
@@ -675,7 +704,7 @@
                 if (s.finalStatus === "proses") cls = "status-proses";
                 else if (s.finalStatus === "terlambat") cls = "status-terlambat";
                 else if (s.finalStatus === "selesai") cls = "status-selesai";
-                html += `<div class="pengajuan-line"><span class="status-badge ${cls}">${pg.jenis_surat}</span> <strong>${pg.nomor_registrasi}</strong> <span class="muted">${pg.tgl_pengajuan}</span> <span class="progress-bar" title="${s.completed}/6 aktivitas selesai"><span class="progress-fill" style="display:block; width:${(s.completed / 6) * 100}%"></span></span></div>`;
+                html += `<div class="pengajuan-line"><span class="status-badge ${cls}">${esc(pg.jenis_surat)}</span> <strong>${esc(pg.nomor_registrasi)}</strong> <span class="muted">${esc(pg.tgl_pengajuan)}</span> <span class="progress-bar" title="${s.completed}/6 aktivitas selesai"><span class="progress-fill" style="display:block; width:${(s.completed / 6) * 100}%"></span></span></div>`;
             }
             if (getPengajuanByPerusahaan(p.id).length === 0) html = "<span class='muted'>Belum ada pengajuan</span>";
             row.insertCell(2).innerHTML = html;
@@ -729,8 +758,8 @@
     
     function generateDetailHTML(perusahaan) {
         const list = getPengajuanByPerusahaan(perusahaan.id);
-        if (list.length === 0) return `<div class="detail-title">🏢 ${perusahaan.nama}</div><span class="muted">Belum ada pengajuan</span>`;
-        let html = `<div><div class="detail-title">🏢 ${perusahaan.nama}</div>`;
+        if (list.length === 0) return `<div class="detail-title">🏢 ${esc(perusahaan.nama)}</div><span class="muted">Belum ada pengajuan</span>`;
+        let html = `<div><div class="detail-title">🏢 ${esc(perusahaan.nama)}</div>`;
         for (let pg of list) {
             const summary = getSummary(pg);
             const nomorBalasan = pg.nomor_surat_balasan || "-";
@@ -738,14 +767,14 @@
             html += `<div class="pengajuan-item">
                 <div class="pengajuan-header">
                     <span>
-                        <strong>${pg.jenis_surat}</strong> (${pg.nomor_registrasi}) - ${pg.tgl_pengajuan}
-                        <br><span class="nomor-balasan">📬 Nomor Surat Balasan (PLN): <strong>${nomorBalasan}</strong></span>
+                        <strong>${esc(pg.jenis_surat)}</strong> (${esc(pg.nomor_registrasi)}) - ${esc(pg.tgl_pengajuan)}
+                        <br><span class="nomor-balasan">📬 Nomor Surat Balasan (PLN): <strong>${esc(nomorBalasan)}</strong></span>
                     </span>
                     <span>
                         <span class="status-badge ${summary.finalStatus === 'selesai' ? 'status-selesai' : (summary.finalStatus === 'terlambat' ? 'status-terlambat' : (summary.finalStatus === 'proses' ? 'status-proses' : 'status-belum'))}">
                             ${summary.finalStatus === 'selesai' ? '✅ Selesai' : (summary.finalStatus === 'terlambat' ? '⚠️ Terlambat' : (summary.finalStatus === 'proses' ? '🔄 Proses' : '⏳ Belum'))}
                         </span>
-                        ${userRole === "admin" ? `<button class="hapus-pengajuan-btn" onclick="hapusPengajuan(${pg.id})">🗑 Hapus</button>` : ''}
+                        ${userRole === "admin" ? `<button class="hapus-pengajuan-btn" onclick="hapusPengajuan(${Number(pg.id)})">🗑 Hapus</button>` : ''}
                     </span>
                 </div>
                 <div class="aktivitas-table"><table><tr><th>Aktivitas</th><th>Status</th><th>Sisa Waktu</th>${userRole === "admin" ? '<th>Update</th>' : ''}</tr>`;
@@ -773,12 +802,12 @@
                 
                 if (userRole === "admin") {
                     html += `<td><div class="update-ctrl">
-                        <select id="select-${pg.id}-${a}">
+                        <select id="select-${Number(pg.id)}-${a}">
                             <option ${status === "belum" ? "selected" : ""} value="belum">Belum</option>
                             <option ${status === "proses" ? "selected" : ""} value="proses">Mulai proses</option>
                             <option ${status === "selesai" ? "selected" : ""} value="selesai">Selesai</option>
                         </select>
-                        <button onclick="updateStatus(${pg.id}, ${a}, document.getElementById('select-${pg.id}-${a}').value)">Update</button>
+                        <button onclick="updateStatus(${Number(pg.id)}, ${a}, document.getElementById('select-${Number(pg.id)}-${a}').value)">Update</button>
                      </div></td>`;
                 }
                 html += `</tr>`;
