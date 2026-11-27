@@ -305,7 +305,10 @@
     // ==================== SUPABASE CONFIG ====================
     const SUPABASE_URL = "https://xhnlpugetbhawjzgduhc.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_NCCMY_0OZjHWv8kjd0gZDA_MeBu374z";
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // Sesi login disimpan di sessionStorage: menutup tab = keluar (aman untuk komputer bersama)
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: { storage: window.sessionStorage, persistSession: true, autoRefreshToken: true }
+    });
 
     // ==================== DURASI PER AKTIVITAS (JAM) ====================
     const DURASI_JAM = [72, 72, 168, 72, 48, 24];
@@ -395,16 +398,7 @@
                 errorDiv.style.display = "block";
                 return;
             }
-            if (data.user) {
-                userId = data.user.id;
-                userEmail = data.user.email;
-                const { data: roleData } = await supabaseClient.from('user_roles').select('role').eq('user_id', userId).maybeSingle();
-                userRole = roleData?.role || "viewer";
-                sessionStorage.setItem("sb_user_id", userId);
-                sessionStorage.setItem("sb_user_role", userRole);
-                sessionStorage.setItem("sb_user_email", userEmail);
-                showMainApp();
-            }
+            if (data.user) await startSession(data.user);
         } catch (err) {
             errorDiv.textContent = "Terjadi kesalahan: " + err.message;
             errorDiv.style.display = "block";
@@ -412,6 +406,34 @@
             loginBtn.disabled = false;
             loginBtn.textContent = "🔐 Login";
         }
+    }
+
+    // Peran TIDAK disimpan di browser: selalu diambil dari tabel user_roles untuk user yang sesinya sah.
+    // Catatan: ini hanya mengatur tampilan. Perlindungan data yang sebenarnya ada di RLS Supabase
+    // (lihat supabase/rls_policies.sql).
+    async function startSession(user) {
+        userId = user.id;
+        userEmail = user.email || "";
+        const { data: roleData, error } = await supabaseClient
+            .from('user_roles').select('role').eq('user_id', userId).maybeSingle();
+        if (error) {
+            alert("⚠️ Gagal memeriksa peran akun, Anda masuk sebagai Viewer.\n\n" + error.message);
+        }
+        userRole = roleData?.role === "admin" ? "admin" : "viewer";
+        showMainApp();
+    }
+
+    async function sessionExpired() {
+        alert("⏰ Sesi login Anda telah berakhir. Silakan login kembali.");
+        await supabaseClient.auth.signOut();
+        window.location.reload();
+    }
+
+    // Jika error dari Supabase disebabkan sesi tidak sah lagi, arahkan ke login
+    async function handleAuthError(error) {
+        const { data } = await supabaseClient.auth.getSession();
+        if (!data?.session) { await sessionExpired(); return true; }
+        return false;
     }
 
     function showMainApp() {
@@ -424,7 +446,6 @@
     
     async function logout() {
         await supabaseClient.auth.signOut();
-        sessionStorage.clear();
         window.location.reload();
     }
     
@@ -444,6 +465,8 @@
         }
     }
     
+    const TIDAK_ADA_IZIN = "⛔ Perubahan ditolak oleh server: akun Anda tidak memiliki izin, atau data sudah tidak ada. Data dimuat ulang.";
+
     function checkAdmin() {
         if (userRole !== "admin") {
             alert("⚠️ Anda tidak memiliki izin! (Hanya Admin)");
@@ -505,8 +528,12 @@
             supabaseClient.from('perusahaan').select('*').order('nama'),
             supabaseClient.from('pengajuan').select('*')
         ]);
-        if (perusahaanRes.error) { alert("Gagal ambil data perusahaan!"); return; }
-        if (pengajuanRes.error) { alert("Gagal ambil data pengajuan!"); return; }
+        const loadError = perusahaanRes.error || pengajuanRes.error;
+        if (loadError) {
+            if (await handleAuthError(loadError)) return;
+            alert("Gagal ambil data: " + loadError.message);
+            return;
+        }
         perusahaanList = perusahaanRes.data || [];
         semuaPengajuan = pengajuanRes.data || [];
         updateDropdown();
@@ -560,6 +587,24 @@
         if (newStatus === "proses") startTimes[idx] = new Date().toISOString();
         statuses[idx] = newStatus;
         
+        // Cek konflik: pastikan data di database masih sama dengan yang sedang dilihat admin ini
+        const { data: terbaru, error: cekError } = await supabaseClient
+            .from('pengajuan').select('statuses, start_times, nomor_surat_balasan').eq('id', pengajuanId).maybeSingle();
+        if (cekError) {
+            if (await handleAuthError(cekError)) return;
+            alert("Error: " + cekError.message); return;
+        }
+        if (!terbaru) {
+            alert("⚠️ Pengajuan ini sudah dihapus oleh pengguna lain. Data dimuat ulang.");
+            await loadData(); return;
+        }
+        if (JSON.stringify(terbaru.statuses) !== JSON.stringify(p.statuses) ||
+            JSON.stringify(terbaru.start_times) !== JSON.stringify(p.start_times) ||
+            (terbaru.nomor_surat_balasan ?? null) !== (p.nomor_surat_balasan ?? null)) {
+            alert("⚠️ Pengajuan ini baru saja diubah oleh admin lain.\n\nData dimuat ulang. Periksa statusnya lalu ulangi perubahan Anda bila masih diperlukan.");
+            await loadData(); return;
+        }
+
         const perubahan = { statuses, start_times: startTimes };
 
         // Aktivitas 5 (Sent a letter to Vendor) wajib disertai Nomor Surat Balasan.
@@ -575,8 +620,12 @@
             perubahan.nomor_surat_balasan = nomorSurat;
         }
 
-        const { error } = await supabaseClient.from('pengajuan').update(perubahan).eq('id', pengajuanId);
-        if (error) { alert("Error: " + error.message); return; }
+        const { data: hasil, error } = await supabaseClient.from('pengajuan').update(perubahan).eq('id', pengajuanId).select('id');
+        if (error) {
+            if (await handleAuthError(error)) return;
+            alert("Error: " + error.message); return;
+        }
+        if (!hasil || hasil.length === 0) { alert(TIDAK_ADA_IZIN); await loadData(); return; }
 
         if (newStatus === "selesai" && idx === aktivitasList.length - 1) {
             alert(`🎉 SELAMAT! Proses surat ${p.nomor_registrasi} telah selesai!`);
@@ -587,16 +636,18 @@
     async function hapusPengajuan(id) {
         if (!checkAdmin()) return;
         if (!confirm("Hapus pengajuan ini?")) return;
-        const { error } = await supabaseClient.from('pengajuan').delete().eq('id', id);
-        if (error) { alert("Error: " + error.message); return; }
+        const { data: hasil, error } = await supabaseClient.from('pengajuan').delete().eq('id', id).select('id');
+        if (error) { if (await handleAuthError(error)) return; alert("Error: " + error.message); return; }
+        if (!hasil || hasil.length === 0) alert(TIDAK_ADA_IZIN);
         await loadData();
     }
 
     async function hapusPerusahaan(id) {
         if (!checkAdmin()) return;
         if (!confirm("Hapus perusahaan beserta semua pengajuannya?")) return;
-        const { error } = await supabaseClient.from('perusahaan').delete().eq('id', id);
-        if (error) { alert("Error: " + error.message); return; }
+        const { data: hasil, error } = await supabaseClient.from('perusahaan').delete().eq('id', id).select('id');
+        if (error) { if (await handleAuthError(error)) return; alert("Error: " + error.message); return; }
+        if (!hasil || hasil.length === 0) alert(TIDAK_ADA_IZIN);
         await loadData();
     }
 
@@ -862,13 +913,15 @@
         document.getElementById(id).addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); }));
     document.getElementById("inputNamaPerusahaan").addEventListener("keydown", e => { if (e.key === "Enter") tambahPerusahaan(); });
 
-    // Check existing session
-    const savedRole = sessionStorage.getItem("sb_user_role");
-    if (savedRole) {
-        userRole = savedRole;
-        userEmail = sessionStorage.getItem("sb_user_email") || "";
-        showMainApp();
-    }
+    // Cek sesi yang masih berlaku (diverifikasi oleh Supabase, bukan dari nilai yang bisa diubah pengguna)
+    ["sb_user_id", "sb_user_role", "sb_user_email"].forEach(k => sessionStorage.removeItem(k)); // sisa versi lama
+    (async () => {
+        const { data } = await supabaseClient.auth.getSession();
+        if (data?.session?.user) await startSession(data.session.user);
+    })();
+    supabaseClient.auth.onAuthStateChange((event, session) => {
+        if (event === "SIGNED_OUT" && userId) window.location.reload();
+    });
 </script>
 </body>
 </html>
